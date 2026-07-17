@@ -1,6 +1,6 @@
 [project]
 name = "mcp-neo4j-lexical-graph"
-version = "0.2.0"
+version = "0.2.1"
 description = "MCP server for creating rich lexical graphs from PDFs in Neo4j. Supports multiple parse modes (pymupdf, docling, page-image), pluggable chunking strategies, document versioning, and structural verification."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -18,7 +18,7 @@ classifiers = [
 dependencies = [
     "fastmcp>=2.14.2,<3.0.0",
     "neo4j>=5.0.0",
-    "litellm>=1.0.0,!=1.82.7,!=1.82.8",
+    "litellm>=1.0.0,<1.92,!=1.82.7,!=1.82.8",
     "pymupdf>=1.24.0",
     "Pillow>=10.0.0",
     "tiktoken>=0.7.0",
