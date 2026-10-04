@@ -1,440 +1,133 @@
-# neo4j-mcp-workspace-template
+# CSV to Neo4j Graph with VS Code and MCP
 
-A template for end-to-end Neo4j graph development using MCP servers. Compatible with **Claude Code**, **Cursor**, **Gemini CLI**, **GitHub Copilot (VS Code)**, **OpenCode**, **OpenAI Codex CLI**, and **Mistral Vibe**.
+This project demonstrates importing the **Sample Superstore CSV** into a local Neo4j database, then exploring the resulting graph with Cypher and AI tools in VS Code.
 
-## Quick Start
+It is based on the [Neo4j MCP Workspace Template](https://github.com/neo4j-field/neo4j-mcp-workspace-template). The original template supports additional tools and PDF workflows; this project walkthrough focuses on the CSV workflow.
 
-```bash
-git clone https://github.com/neo4j-field/neo4j-mcp-workspace-template
-cd neo4j-mcp-workspace-template
-chmod +x setup.sh && ./setup.sh
-```
+## What I did
 
-Then open your AI coding tool:
+- Set up a local Neo4j database using Neo4j Desktop.
+- Connected the project’s MCP servers to Neo4j from VS Code.
+- Imported 9,994 rows from `Sample - Superstore.csv`.
+- Queried the graph using Neo4j Browser and VS Code Copilot Agent.
 
-| Tool | Command / action | Verify |
-|------|-----------------|--------|
-| **Claude Code** | `claude` | `/setup-workspace` |
-| **Cursor** | Open this folder in Cursor | Ask AI to call `list_example_data_models` |
-| **Gemini CLI** | `gemini` | Ask Gemini to call `list_example_data_models` |
-| **GitHub Copilot VS Code** | Open folder in VS Code, use Agent mode | Ask Copilot to call `list_example_data_models` |
-| **OpenCode** | `opencode` | Ask to call `list_example_data_models` |
-| **Codex CLI** | `codex` | Ask Codex to call `list_example_data_models` |
-| **Mistral Vibe** | `vibe` (trust the folder when prompted) | Ask Vibe to call `list_example_data_models` |
+The reported graph counts after import were:
 
-`setup.sh` will:
+| Node label | Count |
+|---|---:|
+| `Customer` | 793 |
+| `Order` | 5,009 |
+| `Product` | 1,862 |
+| `OrderLine` | 9,994 |
 
-1. Prompt for your Neo4j credentials and OpenAI API key
-2. Write `.env` with your configuration
-3. Install dependencies for the local MCP servers
-4. Generate MCP config files for all 7 tools:
-   - `.mcp.json` — Claude Code
-   - `.cursor/mcp.json` — Cursor
-   - `.gemini/settings.json` — Gemini CLI
-   - `.vscode/mcp.json` — GitHub Copilot (VS Code)
-   - `opencode.json` — OpenCode
-   - `.codex/config.toml` — OpenAI Codex CLI
-   - `.vibe/config.toml` — Mistral Vibe
+| Relationship type | Count |
+|---|---:|
+| `PLACED` | 5,009 |
+| `HAS_LINE` | 9,994 |
+| `FOR_PRODUCT` | 9,994 |
 
----
+## Graph structure
 
-## Claude Desktop
+The imported graph represents customers, their orders, the line items in each order, and the products on those line items:
 
-If you use **Claude Desktop** (not one of the 7 coding tools above), install the workspace as a Desktop Extension — no git clone needed.
+```text
+(Customer)-[:PLACED]->(Order)
+(Order)-[:HAS_LINE]->(OrderLine)
+(OrderLine)-[:FOR_PRODUCT]->(Product)
+```plaintext
 
-### Prerequisites
+## Tools used
 
-1. **[uv](https://docs.astral.sh/uv/)** — must be installed before the extension can start (see [Installing uv](#installing-uv) below)
+- **Neo4j Desktop** — runs the local Neo4j database.
+- **VS Code with GitHub Copilot Agent** — lets me ask questions in natural language and use the configured MCP tools.
+- **Neo4j Ingest MCP server** — imports the CSV.
+- **Neo4j GraphRAG MCP server** — queries the graph using Cypher.
+- **Neo4j Data Modeling MCP server** — provides graph-model examples and modeling support.
 
-2. **Two Neo4j databases** — the workspace uses a **Documents DB** (chunks, entities) and an **Ontology DB** (extraction schema). Two options:
+The template also includes PDF-related MCP servers. They are not used in this CSV demonstration.
 
-   | Option | How |
-   |--------|-----|
-   | **Two Aura instances** | Create two free [AuraDB](https://neo4j.com/cloud/platform/aura-graph-database/) instances — one for documents, one for the ontology. Each has its own URI, username, and password. |
-   | **Neo4j Desktop (local)** | Install [Neo4j Desktop](https://neo4j.com/download/), create one DBMS, then add two databases inside it (e.g. `neo4j` and `ontology`). Both share the same URI and credentials. |
+## Prerequisites
 
-   > **Aura free tier note:** each Aura instance has a single database named `neo4j` — you cannot create additional databases. Use two separate instances.
-
-3. **An OpenAI API key** — for embeddings and entity extraction (or configure another provider via Extra Environment Variables in the install dialog)
-
-### Install
-
-1. Download `neo4j-mcp-workspace.dxt` from the [latest release](https://github.com/neo4j-field/neo4j-mcp-workspace-template/releases)
-2. Double-click the `.dxt` file — Claude Desktop opens an install dialog
-3. Fill in your credentials:
-   - **Documents DB** — URI, username, password, database name (e.g. `neo4j`)
-   - **Ontology DB** — URI, username, password, database name (e.g. `neo4j` on Aura, `ontology` on Desktop). Leave URI/username/password blank if using the same Neo4j instance as Documents DB.
-   - **OpenAI API key** — for embeddings; also used for extraction if your extraction model is OpenAI
-   - **Extraction model** — defaults to `openai/gpt-5.4-mini`; change to any [LiteLLM-compatible](https://docs.litellm.ai/docs/providers) model
-4. Click **Install** — all MCP servers start automatically
-
-### What makes it different
-
-The workspace stores your extraction ontology as a **graph in your Ontology DB**. Open it in **Neo4j Bloom** to visualize and edit it directly — add aliases, adjust blocklists, define new entity types — then ask Claude to re-extract. Changes are live immediately. No files, no code.
-
-A companion **SME skill** (`build-ontology-driven-graph`) walks non-developers through the full flow — install it via drag-drop from the [latest skill release](https://github.com/neo4j-field/neo4j-mcp-workspace-template/releases?q=skill-build-ontology). See [Install the SME skill](docs/CLAUDE_DESKTOP.md#install-the-sme-skill-recommended) in the Claude Desktop Guide.
-
-→ See the [Claude Desktop Guide](docs/CLAUDE_DESKTOP.md) for the full workflow, Bloom editing, and troubleshooting.
-
-### Providing files to the workspace
-
-The MCP servers run on your local machine and access your local filesystem. When Claude asks you for a PDF or CSV file, provide the **full path on your computer** (e.g. `/Users/alice/Documents/report.pdf` on Mac, `C:\Users\alice\Documents\report.pdf` on Windows).
-
-> Do not use the Claude Desktop file upload button — uploaded files go to a sandbox the MCP servers cannot reach. Save the file to your disk and give Claude the path instead.
-
----
-
-## Requirements
-
-- **[uv](https://docs.astral.sh/uv/)** — required to run all MCP servers (provides `uvx`)
-- **Neo4j 2025.01+** — required for native `VECTOR` type used by lexical-graph
-  - [Neo4j Desktop](https://neo4j.com/download/) or [AuraDB](https://neo4j.com/cloud/platform/aura-graph-database/)
-- **LLM provider** — for embedding generation and entity extraction (see [LLM Configuration](#llm-configuration) below)
-- **Google MCP Toolbox** (optional) — only if using BigQuery as a data source
-
-### Installing uv
-
-`uv` is a fast Python package manager that also provides `uvx` — used to run the MCP servers without a manual Python setup. Install it once on your machine:
-
-**macOS / Linux**
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-Then restart your terminal (or run `source $HOME/.local/bin/env`).
-
-**Windows (PowerShell)**
-```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-Then restart your terminal.
-
-**Verify the install**
-```bash
-uv --version   # should print e.g. uv 0.6.x
-uvx --version  # same binary, should also work
-```
-
-> **Note for Claude Desktop users:** `uv` must be installed and on your PATH before the Neo4j workspace extension can start. Claude Desktop does not bundle `uv`.
-
-Full docs: [docs.astral.sh/uv/getting-started/installation](https://docs.astral.sh/uv/getting-started/installation/)
-
----
-
-## MCP Servers
-
-This workspace configures five MCP servers:
-
-### Data Modeling
-
-Designs and validates graph schemas from sample data. Provides example data models and Mermaid visualizations.
-
-- **Server:** `mcp-neo4j-data-modeling` (remote via `uvx`)
-- **Required credentials:** none
-
-### Ingest
-
-Loads structured CSV data into Neo4j using parameterized Cypher queries generated by the Data Modeling server.
-
-- **Server:** `mcp-neo4j-ingest` (local — `mcp-neo4j-ingest/`)
-- **Required credentials:** Neo4j connection vars
-
-### Lexical Graph
-
-Parses PDFs into a searchable graph with `Document`, `Chunk`, and optional `Image`/`Table`/`Section`/`Page` nodes, vector embeddings, and fulltext indexes. Supports 4 parse modes:
-
-- `pymupdf` — fast text extraction + optional image/table capture (default)
-- `docling` — full layout detection with sections, tables, captions
-- `page_image` — vision model per page (slides, diagrams, visual-heavy docs)
-- `vlm_blocks` — pymupdf + VLM block classification (faster than docling, experimental)
-
-Tools must be called in a specific order depending on the parse mode. See `mcp-neo4j-lexical-graph/README.md` for the full workflow table.
-
-- **Server:** `mcp-neo4j-lexical-graph` (local — `mcp-neo4j-lexical-graph/`)
-- **Required credentials:** Neo4j connection vars + LLM API key + `EMBEDDING_MODEL`
-
-### Entity Graph
-
-Extracts structured entities from lexical graph chunks using an LLM. Supports 100+ providers via LiteLLM. Processing runs asynchronously in the background.
-
-- **Server:** `mcp-neo4j-entity-graph` (local — `mcp-neo4j-entity-graph/`)
-- **Required credentials:** Neo4j connection vars + LLM API key + `EXTRACTION_MODEL`
-
-### GraphRAG
-
-Read/write Cypher queries, vector search, fulltext search, and graph-traversal queries. Replaces the standalone Cypher server and adds RAG retrieval on top.
-
-- **Server:** `mcp-neo4j-graphrag` (local — cloned by `setup.sh`)
-- **Key tools:** `read_neo4j_cypher`, `write_neo4j_cypher`, `get_neo4j_schema_and_indexes`, `vector_search`, `fulltext_search`, `search_cypher_query`, `read_node_image`
-- **Required credentials:** reads from `.env` via python-dotenv
-
-### BigQuery (optional)
-
-Connects to BigQuery as a source database. Requires the [Google MCP Toolbox](https://github.com/googleapis/genai-toolbox) CLI.
-
-```bash
-brew install mcp-toolbox
-```
-
----
-
-## Workflow
-
-### Structured data (CSV)
-
-1. **Discovery** — analyze CSV samples; identify entities, relationships, and use cases
-2. **Model** — design a graph data model with the Data Modeling server
-3. **Ingest** — load CSV data into Neo4j with the Ingest server
-4. **Query** — generate Cypher for each use case
-5. **Validate** — run queries and verify results address the use cases
-
-### Unstructured data (PDF) — use `/develop-neo4j-graph`
-
-1. **Discovery** — review PDFs; select parse mode based on document type
-2. **Use case** — infer CHATBOT or ANALYTICAL mode from use case description
-3. **Model** — design a graph data model with the Data Modeling server
-4. **Lexical Graph** — parse PDFs, chunk (if needed), generate descriptions (if images/tables), embed
-5. **Schema + validators** — export extraction schema and review Pydantic validators
-6. **Entity Graph** — extract structured entities from chunks
-7. **Q&A / Analysis** — answer questions (CHATBOT) or generate Cypher reports (ANALYTICAL)
-8. **Report** — save results to `outputs/reports/`
-
-Use the `develop-neo4j-graph` skill for the full guided workflow (CSV + PDF, CHATBOT or ANALYTICAL mode):
-
-| Tool | How to invoke |
-|------|--------------|
-| Claude Code | `/develop-neo4j-graph` |
-| Gemini CLI | `/develop-neo4j-graph` (TOML slash command) or describe the task (auto-triggered) |
-| Codex CLI | `$develop-neo4j-graph` or describe the task (auto-triggered) |
-| Cursor, GitHub Copilot VS Code | Describe the task — skill auto-triggers |
-| OpenCode | Select `develop-neo4j-graph` from the agent picker |
-| Mistral Vibe | Describe the task — skill auto-triggers (discovered from `.agents/skills/`) |
-
----
-
-## LLM Configuration
-
-Both `EMBEDDING_MODEL` and `EXTRACTION_MODEL` accept any [LiteLLM-compatible](https://docs.litellm.ai/docs/providers) model string. The defaults use OpenAI, but you can swap to any provider — including local models via Ollama — by editing two lines in `.env`.
-
-### Default (OpenAI)
-
-```env
-EMBEDDING_MODEL=text-embedding-3-small
-EXTRACTION_MODEL=gpt-5.4-mini
-```
-
-Fast, high quality, requires an OpenAI API key.
-
-### Local models via Ollama
-
-Run models entirely on your own hardware — no API key needed. Install [Ollama](https://ollama.com), pull the models, then update `.env`:
-
-```env
-EMBEDDING_MODEL=ollama/nomic-embed-text
-EXTRACTION_MODEL=ollama/qwen3:8b
-```
-
-```bash
-ollama pull nomic-embed-text
-ollama pull qwen3:8b
-```
-
-**Recommended local models:**
-
-
-| Use case                  | Model              | Size   | Notes                                            |
-| ------------------------- | ------------------ | ------ | ------------------------------------------------ |
-| Embeddings                | `nomic-embed-text` | 274 MB | 768-dim, good retrieval quality                  |
-| Text extraction           | `qwen3:8b`         | 5.2 GB | Best quality/speed balance for entity extraction |
-| Text extraction (lighter) | `phi4-mini`        | 2.5 GB | Faster, lower relationship recall (~75% vs 100%) |
-| Vision extraction         | `qwen3.5:9b`       | 6.6 GB | For `page_image` parse mode on slides/diagrams   |
-
-
-**Tradeoffs vs cloud models:** Local extraction is slower due to sequential processing (expect 15–45 min per 100 chunks vs ~2 min with `gpt-5.4-mini`). Quality-wise, `qwen3:8b` matches cloud models for simple entity extraction, but `phi4-mini` misses relationships.
-
-### Other providers
-
-`setup.sh` only prompts for `OPENAI_API_KEY`. For other providers, run `setup.sh` first, then add the provider's credentials to `.env` manually:
-
-```env
-# Mistral
-MISTRAL_API_KEY=...
-EMBEDDING_MODEL=mistral/mistral-embed
-EXTRACTION_MODEL=mistral/mistral-small-latest
-
-# Anthropic
-ANTHROPIC_API_KEY=sk-ant-...
-EXTRACTION_MODEL=anthropic/claude-haiku-4-5-20251001
-
-# Azure OpenAI
-AZURE_API_KEY=...
-AZURE_API_BASE=https://YOUR_RESOURCE.openai.azure.com
-AZURE_API_VERSION=2024-02-01
-EXTRACTION_MODEL=azure/gpt-4o-mini
-
-# AWS Bedrock
-AWS_ACCESS_KEY_ID=...
-AWS_SECRET_ACCESS_KEY=...
-AWS_REGION_NAME=us-east-1
-EXTRACTION_MODEL=bedrock/anthropic.claude-3-haiku-20240307-v1:0
-
-# Google Gemini
-GEMINI_API_KEY=...
-EXTRACTION_MODEL=gemini/gemini-2.0-flash
-
-# Ollama (local, no key needed — see section above)
-EXTRACTION_MODEL=ollama/qwen3:8b
-```
-
-Full provider list: [docs.litellm.ai/docs/providers](https://docs.litellm.ai/docs/providers)
-
----
+- Windows
+- [Git for Windows](https://git-scm.com/download/win), which includes Git Bash
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
+- [Neo4j Desktop](https://neo4j.com/download/)
+- VS Code with GitHub Copilot Chat
 
 ## Setup
 
-### Primary: `./setup.sh`
+1. Create and start a local database in Neo4j Desktop.
+2. Open the project folder in Git Bash.
+3. If setting up a fresh copy, run:
 
-```bash
-chmod +x setup.sh && ./setup.sh
-```
+   ```bash
+   bash ./setup.sh
+   ```
 
-The script is idempotent. Re-run it any time to:
+4. Enter the Neo4j connection details when prompted. The database name is usually `neo4j`; use the password you set in Neo4j Desktop.
+5. The setup script may ask for an OpenAI API key. CSV import and ordinary Cypher queries do not use the PDF embedding/entity-extraction features, so those features are not part of this demo.
+6. Open the project folder in VS Code. The VS Code MCP configuration is `.vscode/mcp.json`.
+7. In VS Code, use **MCP: List Servers** from the Command Palette to check that the needed servers are running.
 
-- Regenerate all 7 MCP config files after credential changes
-- Re-install server dependencies after a `git pull`
+If a server fails to start on Windows, check that its `--directory` value in `.vscode/mcp.json` uses a Windows path, for example:
 
-### Alternative: Manual Setup
+```text
+C:/Users/your-name/neo4j-mcp-workspace-template/mcp-neo4j-ingest
+```plaintext
 
-Manual setup steps
+Do not publish local configuration containing your computer’s paths or credentials.
 
-**1. Create `.env`**
+## Importing the CSV
 
-Copy `.env.example` to `.env` and fill in your values:
+Use the Neo4j Ingest MCP tool, `ingest_csv_into_neo4j`, from VS Code Copilot Chat in **Agent** mode. Provide the CSV’s absolute path and review the proposed import before approving a database write.
 
-```bash
-cp .env.example .env
-# Edit .env with your Neo4j credentials and API keys
-```
+Example request:
 
-**2. Clone the graphrag server**
+> Inspect `Sample - Superstore.csv`, explain the proposed graph import, and wait for my approval before writing anything to Neo4j.
 
-```bash
-git clone --depth 1 https://github.com/neo4j-field/mcp-neo4j-graphrag
-```
+## Example Cypher queries
 
-**3. Install local server dependencies**
+Run these in **Neo4j Browser**. The Browser query box expects Cypher, not plain English.
 
-```bash
-uv sync --directory mcp-neo4j-ingest
-uv sync --directory mcp-neo4j-lexical-graph
-uv sync --directory mcp-neo4j-entity-graph
-uv sync --directory mcp-neo4j-graphrag
-```
+### Count nodes by label
 
-**4. Generate MCP config files**
+```cypher
+MATCH (n)
+RETURN labels(n) AS labels, count(*) AS count
+ORDER BY count DESC;
+```plaintext
 
-Use `.cursor/mcp.json.example` as a reference — replace `/absolute/path/to/` with your actual workspace path, then adapt the format for each tool:
+### View connected customer, order, line-item, and product records
 
-```bash
-# Cursor — mcpServers key
-cp .cursor/mcp.json.example .cursor/mcp.json
-# Edit: replace /absolute/path/to/ with actual path
+```cypher
+MATCH (c:Customer)-[:PLACED]->(o:Order)
+      -[:HAS_LINE]->(line:OrderLine)
+      -[:FOR_PRODUCT]->(p:Product)
+RETURN c, o, line, p
+LIMIT 10;
+```plaintext
 
-# Claude Code — identical format, different filename
-cp .cursor/mcp.json .mcp.json
+### Find customers with the most orders
 
-# Gemini CLI — identical format, different filename
-mkdir -p .gemini && cp .cursor/mcp.json .gemini/settings.json
+```cypher
+MATCH (c:Customer)-[:PLACED]->(o:Order)
+RETURN properties(c) AS customer, count(o) AS orderCount
+ORDER BY orderCount DESC
+LIMIT 10;
+```plaintext
 
-# GitHub Copilot VS Code — rename root key from "mcpServers" to "servers"
-# Edit .vscode/mcp.json with the server entries under "servers": { ... }
+You can also ask questions in English in **VS Code Copilot Chat**, with Agent mode selected. For example:
 
-# OpenCode — root key "mcp", command is an array, type "local"
-# See opencode.json generated by setup.sh for format reference
+> Using the Neo4j MCP tools, show the 10 customers with the most orders. Use read-only queries and show me the Cypher query you ran.
 
-# Codex CLI — TOML format
-# See .codex/config.toml generated by setup.sh for format reference
+## Data and credentials
 
-# Mistral Vibe — TOML format, array-of-tables `[[mcp_servers]]` with name/transport/command/args
-# See .vibe/config.toml generated by setup.sh for format reference
-```
+- Keep `.env` private. It may contain your Neo4j password or API keys.
+- Do not commit `.env`, `.venv/`, Neo4j database files, or local MCP configuration with machine-specific paths.
+- Check the dataset’s source and usage terms before publishing the CSV itself. If you cannot redistribute it, document where it came from and how to obtain it instead.
+- Check the original repository’s license and preserve any required notices or attribution.
 
-All local servers read credentials from `.env` via python-dotenv — no credentials in config files.
+## Credits
 
-
-
----
-
-## Supported Tools
-
-| Tool | MCP config | Skill/workflow system | Context file |
-|------|-----------|----------------------|--------------|
-| Claude Code | `.mcp.json` | `/develop-neo4j-graph` slash command (`.claude/skills/`) | `CLAUDE.md` |
-| Cursor | `.cursor/mcp.json` | auto-triggered (`.agents/skills/`) | — |
-| Gemini CLI | `.gemini/settings.json` | auto-triggered + `/develop-neo4j-graph` command | `GEMINI.md` |
-| GitHub Copilot VS Code | `.vscode/mcp.json` | auto-triggered (`.agents/skills/`) | `.github/copilot-instructions.md` |
-| OpenCode | `opencode.json` | agent picker (`.opencode/agents/`) | — |
-| Codex CLI | `.codex/config.toml` | `$develop-neo4j-graph` or auto-triggered | `AGENTS.md` |
-| Mistral Vibe | `.vibe/config.toml` | auto-triggered (`.agents/skills/`) | `AGENTS.md` |
-
-All generated config files contain absolute paths and are gitignored — run `./setup.sh` on each machine. `AGENTS.md` is a shared convention read by both Codex CLI and Mistral Vibe — its instructions are written to be tool-agnostic rather than assuming either one specifically.
-
-The skill workflow is defined once in `.agents/skills/develop-neo4j-graph/SKILL.md` (the [Agent Skills](https://agentskills.io) open standard) and referenced by all tools.
-
----
-
-## Project Structure
-
-```
-neo4j-mcp-workspace-template/
-├── setup.sh                        # One-time setup script
-├── .env.example                    # Documents all environment variables
-├── CLAUDE.md                       # Claude Code agent context
-├── GEMINI.md                       # Gemini CLI agent context
-├── AGENTS.md                       # Codex CLI + Mistral Vibe agent context (shared convention)
-├── .agents/
-│   └── skills/
-│       └── develop-neo4j-graph/    # Cross-tool skill (Agent Skills standard)
-│           ├── SKILL.md            # Workflow definition
-│           └── references/         # Detailed reference docs per mode
-├── .gemini/
-│   └── commands/
-│       └── develop-neo4j-graph.toml  # Gemini CLI slash command
-├── .opencode/
-│   └── agents/
-│       └── develop-neo4j-graph.md  # OpenCode agent
-├── .github/
-│   └── copilot-instructions.md     # GitHub Copilot VS Code context
-├── data/                           # Input data (gitignored contents, tracked structure)
-│   ├── csv/                        # Structured data
-│   └── pdf/                        # PDF documents
-├── outputs/                        # Generated outputs (gitignored contents, tracked structure)
-│   ├── data_models/                # Graph data model JSON files
-│   ├── queries/                    # Cypher query YAML files
-│   ├── reports/                    # Markdown reports
-│   └── schemas/                    # Pydantic extraction schema files
-├── demo/                           # Demo data scripts and reference outputs (committed)
-│   └── expected/                   # Reference outputs for comparison
-├── mcp-neo4j-ingest/               # Local ingest MCP server
-├── mcp-neo4j-lexical-graph/        # Local lexical graph MCP server
-├── mcp-neo4j-entity-graph/         # Local entity graph MCP server
-├── mcp-neo4j-graphrag/             # Cloned by setup.sh (gitignored)
-├── .mcp.json                       # Generated (gitignored) — Claude Code MCP config
-├── .codex/
-│   └── config.toml                 # Generated (gitignored) — Codex CLI MCP config
-├── .vibe/
-│   └── config.toml                 # Generated (gitignored) — Mistral Vibe MCP config
-├── .cursor/
-│   ├── mcp.json                    # Generated (gitignored) — Cursor MCP config
-│   └── mcp.json.example            # Template for manual setup
-├── .gemini/
-│   └── settings.json               # Generated (gitignored) — Gemini CLI MCP config
-├── .vscode/
-│   └── mcp.json                    # Generated (gitignored) — GitHub Copilot MCP config
-├── opencode.json                   # Generated (gitignored) — OpenCode MCP config
-└── .claude/
-    └── skills/
-        ├── develop-neo4j-graph/    # Symlink → .agents/skills/develop-neo4j-graph/
-        ├── setup-workspace/        # /setup-workspace validation skill
-        └── dev/evaluate-pipeline/  # /dev:evaluate-pipeline skill
-```
-
+This project uses the [Neo4j MCP Workspace Template](https://github.com/neo4j-field/neo4j-mcp-workspace-template). The setup and MCP server framework come from that template; the project description and results above reflect my local CSV import and exploration.
+`
